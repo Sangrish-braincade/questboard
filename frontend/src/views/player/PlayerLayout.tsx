@@ -80,38 +80,9 @@ function JoinSession() {
   );
 }
 
-// ─── Player Session View (placeholder for Phase 2+) ─────────────────
-
-function PlayerSession() {
-  const { name, sessionCode } = useSessionStore();
-
-  return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
-      <header className="flex items-center justify-between border-b border-[var(--color-surface-lighter)] px-6 py-4">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--color-primary)]">
-            Questboard
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Playing as {name}
-          </p>
-        </div>
-        {sessionCode && (
-          <span className="rounded bg-[var(--color-surface-light)] px-3 py-1 font-mono text-sm text-[var(--color-text-muted)]">
-            {sessionCode}
-          </span>
-        )}
-      </header>
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-[var(--color-text-muted)]">
-          Session view — battle map, character sheet, chat will go here.
-        </p>
-      </main>
-    </div>
-  );
-}
-
 // ─── Router ──────────────────────────────────────────────────────────
+
+import PlayerSession from "./PlayerSession";
 
 export default function PlayerLayout() {
   return (

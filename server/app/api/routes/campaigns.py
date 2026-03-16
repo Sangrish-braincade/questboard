@@ -24,14 +24,14 @@ class CampaignSummary(BaseModel):
     player_count: int
 
 
-@router.get("/", response_model=list[CampaignSummary])
+@router.get("", response_model=list[CampaignSummary])
 async def list_campaigns():
     """List all campaigns in the DM's campaign root directory."""
     campaign_manager.ensure_root_exists()
     return campaign_manager.list_campaigns()
 
 
-@router.post("/", response_model=CampaignSummary, status_code=201)
+@router.post("", response_model=CampaignSummary, status_code=201)
 async def create_campaign(req: CreateCampaignRequest):
     """Create a new campaign with standard folder structure."""
     campaign_manager.ensure_root_exists()

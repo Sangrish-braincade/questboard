@@ -53,7 +53,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const res = await api.post<{
       session_code: string;
       token: string;
-      campaign: string;
+      campaign_folder: string;
     }>("/auth/host", {
       campaign_folder: campaign,
       dm_name: dmName,
@@ -65,7 +65,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       role: "dm",
       name: dmName,
       sessionCode: res.session_code,
-      campaign: res.campaign,
+      campaign: res.campaign_folder,
     });
 
     return res.session_code;
@@ -75,11 +75,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const res = await api.post<{
       token: string;
       session_code: string;
-      campaign: string;
-      dm_name: string;
+      campaign_folder: string;
+      role: string;
     }>("/auth/join", {
       session_code: code,
-      player_name: playerName,
+      display_name: playerName,
     });
 
     api.setToken(res.token);
@@ -88,7 +88,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       role: "player",
       name: playerName,
       sessionCode: res.session_code,
-      campaign: res.campaign,
+      campaign: res.campaign_folder,
     });
   },
 
@@ -105,7 +105,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { sessionCode } = get();
     if (sessionCode) {
       await api.post(`/auth/session/${sessionCode}/kick`, {
-        player_name: playerName,
+        display_name: playerName,
       });
     }
   },
@@ -113,11 +113,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   regenerateCode: async () => {
     const { sessionCode } = get();
     if (!sessionCode) throw new Error("No active session");
-    const res = await api.post<{ new_code: string }>(
+    const res = await api.post<{ new_session_code: string }>(
       `/auth/session/${sessionCode}/regenerate`
     );
-    set({ sessionCode: res.new_code });
-    return res.new_code;
+    set({ sessionCode: res.new_session_code });
+    return res.new_session_code;
   },
 
   toggleLock: async () => {

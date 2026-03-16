@@ -1,6 +1,7 @@
 /**
  * Questboard — Game-level WebSocket dispatcher
  * Routes incoming WS messages to the appropriate stores.
+ * Uses Zustand's getState() to avoid stale closures.
  */
 
 import { useCallback } from "react";
@@ -12,15 +13,18 @@ import { useMapStore } from "@/stores/mapStore";
 import type { WSMessage, InitiativeEntry, TokenState, FogRegion } from "@/types";
 
 export function useGameSocket() {
+  // Stable — these selectors return the same function reference
   const addPlayer = useSessionStore((s) => s.addPlayer);
   const removePlayer = useSessionStore((s) => s.removePlayer);
   const addChatMessage = useChatStore((s) => s.addMessage);
-  const combatStore = useCombatStore();
-  const mapStore = useMapStore();
 
   const handleMessage = useCallback(
     (msg: WSMessage) => {
       const { type, from, data } = msg;
+
+      // Read latest store state via getState() — no stale closures
+      const combat = useCombatStore.getState();
+      const map = useMapStore.getState();
 
       switch (type) {
         // ─── Chat ──────────────────────
@@ -72,16 +76,17 @@ export function useGameSocket() {
 
         // ─── Combat ────────────────────
         case "combat_start":
-          combatStore.startCombat(data.initiative as InitiativeEntry[]);
+          combat.startCombat(data.initiative as InitiativeEntry[]);
           addChatMessage(
             createChatMessage("system", "System", "Combat has started!")
           );
           break;
 
         case "combat_next_turn": {
-          combatStore.nextTurn();
-          const current =
-            combatStore.initiative[combatStore.turnIndex];
+          combat.nextTurn();
+          // Re-read state after mutation
+          const updated = useCombatStore.getState();
+          const current = updated.initiative[updated.turnIndex];
           if (current) {
             addChatMessage(
               createChatMessage("system", "System", `It's ${current.name}'s turn`)
@@ -91,14 +96,14 @@ export function useGameSocket() {
         }
 
         case "combat_damage":
-          combatStore.applyDamage(
+          combat.applyDamage(
             data.target as string,
             data.damage as number
           );
           break;
 
         case "combat_end":
-          combatStore.endCombat();
+          combat.endCombat();
           addChatMessage(
             createChatMessage("system", "System", "Combat has ended")
           );
@@ -106,7 +111,7 @@ export function useGameSocket() {
 
         // ─── Map & Tokens ──────────────
         case "token_move":
-          mapStore.moveToken(
+          map.moveToken(
             data.token_id as string,
             data.x as number,
             data.y as number
@@ -114,15 +119,15 @@ export function useGameSocket() {
           break;
 
         case "token_add":
-          mapStore.addToken(data.token as TokenState);
+          map.addToken(data.token as TokenState);
           break;
 
         case "token_remove":
-          mapStore.removeToken(data.token_id as string);
+          map.removeToken(data.token_id as string);
           break;
 
         case "fog_update":
-          mapStore.setFogRegions(data.regions as FogRegion[]);
+          map.setFogRegions(data.regions as FogRegion[]);
           break;
 
         // ─── Errors ────────────────────
@@ -136,7 +141,7 @@ export function useGameSocket() {
           console.log(`[GameSocket] Unhandled message type: ${type}`);
       }
     },
-    [addPlayer, removePlayer, addChatMessage, combatStore, mapStore]
+    [addPlayer, removePlayer, addChatMessage]
   );
 
   return useWebSocket(handleMessage);

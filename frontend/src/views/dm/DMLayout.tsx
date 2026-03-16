@@ -186,19 +186,9 @@ function CampaignCard({
   );
 }
 
-// ─── DM Session View (placeholder for Phase 2+) ─────────────────────
-
-function DMSession() {
-  return (
-    <div className="flex h-screen items-center justify-center bg-[var(--color-surface)]">
-      <p className="text-[var(--color-text-muted)]">
-        Session view — battle map, chat, combat tracker will go here.
-      </p>
-    </div>
-  );
-}
-
 // ─── Router ──────────────────────────────────────────────────────────
+
+import DMSession from "./DMSession";
 
 export default function DMLayout() {
   return (

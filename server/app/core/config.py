@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_prefix": "QUESTBOARD_",
         "env_file": ".env",
+        "extra": "ignore",
     }
 
 
