@@ -40,7 +40,9 @@ function createWindow() {
     mainWindow.loadURL(`${FRONTEND_DEV_URL}/dm`);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../frontend/dist/index.html"));
+    // In production, frontend is bundled alongside the app
+    const frontendPath = path.join(__dirname, "../frontend/dist/index.html");
+    mainWindow.loadFile(frontendPath);
   }
 
   mainWindow.on("close", (e) => {

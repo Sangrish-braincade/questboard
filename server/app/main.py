@@ -9,7 +9,7 @@ import os
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import auth, campaigns, characters, maps, combat, dice, npcs, inventory, audio, spells
+from app.api.routes import auth, campaigns, characters, maps, combat, dice, npcs, inventory, audio, spells, quests, encounters, notes, handouts, transcripts
 from app.websocket.manager import ws_manager
 from app.websocket.handlers import handle_message
 from app.services.campaign_manager import campaign_manager
@@ -62,6 +62,11 @@ app.include_router(npcs.router, prefix="/api/npcs", tags=["npcs"])
 app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
 app.include_router(audio.router, prefix="/api/audio", tags=["audio"])
 app.include_router(spells.router, prefix="/api/spells", tags=["spells"])
+app.include_router(quests.router, prefix="/api/quests", tags=["quests"])
+app.include_router(encounters.router, prefix="/api/encounters", tags=["encounters"])
+app.include_router(notes.router, prefix="/api/notes", tags=["notes"])
+app.include_router(handouts.router, prefix="/api/handouts", tags=["handouts"])
+app.include_router(transcripts.router, prefix="/api/transcripts", tags=["transcripts"])
 
 # --- WebSocket endpoint ---
 

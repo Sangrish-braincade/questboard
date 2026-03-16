@@ -1,0 +1,7 @@
+# Optional — Discord voice transcription
+# Install with: pip install -r requirements-discord.txt
+discord.py[voice]==2.4.0
+google-cloud-speech==2.29.0
+pydub==0.25.1
+# Whisper requires: pip install setuptools wheel first
+# openai-whisper==20240930

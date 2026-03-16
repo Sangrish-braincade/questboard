@@ -11,10 +11,14 @@ import TokenPanel from "@/components/battlemap/TokenPanel";
 import ChatPanel from "@/components/chat/ChatPanel";
 import CombatTracker from "@/components/combat/CombatTracker";
 import DiceRoller from "@/components/dice/DiceRoller";
+import DMScreen from "@/components/dm/DMScreen";
+import QuickRules from "@/components/dm/QuickRules";
+import LiveTranscript from "@/components/transcript/LiveTranscript";
 import { useMapStore } from "@/stores/mapStore";
+import { useCampaignStore } from "@/stores/campaignStore";
 import type { TokenState } from "@/types";
 
-type SidePanel = "chat" | "combat" | "tokens";
+type SidePanel = "chat" | "combat" | "tokens" | "transcript";
 
 export default function DMSession() {
   const { sessionCode, name, players, endSession, regenerateCode, toggleLock, locked } =
@@ -26,6 +30,8 @@ export default function DMSession() {
   const addToken = useMapStore((s) => s.addToken);
   const removeToken = useMapStore((s) => s.removeToken);
   const updateToken = useMapStore((s) => s.updateToken);
+  const currentCampaign = useCampaignStore((s) => s.currentCampaign);
+  const [showDMScreen, setShowDMScreen] = useState(false);
 
   const handleTokenMove = (tokenId: string, gridX: number, gridY: number) => {
     send({
@@ -82,6 +88,13 @@ export default function DMSession() {
           </div>
 
           <button
+            onClick={() => setShowDMScreen(true)}
+            className="rounded bg-amber-500/20 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-500/30"
+          >
+            DM Screen
+          </button>
+
+          <button
             onClick={() => toggleLock()}
             className={`rounded px-3 py-1.5 text-xs ${
               locked
@@ -121,7 +134,7 @@ export default function DMSession() {
         <div className="flex w-80 flex-col">
           {/* Panel tabs */}
           <div className="flex border-b border-[var(--color-surface-lighter)]">
-            {(["chat", "combat", "tokens"] as SidePanel[]).map((panel) => (
+            {(["chat", "combat", "tokens", "transcript"] as SidePanel[]).map((panel) => (
               <button
                 key={panel}
                 onClick={() => setActivePanel(panel)}
@@ -152,9 +165,21 @@ export default function DMSession() {
                 onUpdateToken={handleUpdateToken}
               />
             )}
+            {activePanel === "transcript" && currentCampaign && (
+              <LiveTranscript
+                campaignFolder={currentCampaign.folder}
+                sessionId={null}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {/* DM Screen modal */}
+      {showDMScreen && <DMScreen onClose={() => setShowDMScreen(false)} />}
+
+      {/* Quick Rules floating widget */}
+      <QuickRules />
     </div>
   );
 }

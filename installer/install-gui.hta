@@ -1,0 +1,403 @@
+<html>
+<head>
+<title>Questboard Installer</title>
+<HTA:APPLICATION
+  ID="QuestboardInstaller"
+  APPLICATIONNAME="Questboard Installer"
+  BORDER="thin"
+  BORDERSTYLE="normal"
+  CAPTION="yes"
+  ICON=""
+  MAXIMIZEBUTTON="no"
+  MINIMIZEBUTTON="yes"
+  SHOWINTASKBAR="yes"
+  SINGLEINSTANCE="yes"
+  SYSMENU="yes"
+  WINDOWSTATE="normal"
+  SCROLL="no"
+  NAVIGABLE="no"
+  CONTEXTMENU="no"
+  SELECTION="no"
+/>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    overflow: hidden;
+    width: 600px;
+    height: 520px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+    padding: 24px 32px;
+    text-align: center;
+    border-bottom: 2px solid #e94560;
+  }
+  .header h1 { font-size: 28px; color: #e94560; letter-spacing: 2px; }
+  .header p { font-size: 12px; color: #888; margin-top: 4px; }
+
+  .content { padding: 24px 32px; }
+
+  .mode-select {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 18px;
+    border: 2px solid #333;
+    border-radius: 12px;
+    background: #16213e;
+    color: #ccc;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .mode-btn:hover { border-color: #e94560; color: #fff; }
+  .mode-btn.active { border-color: #e94560; background: #1a1a3e; color: #e94560; }
+  .mode-btn .icon { font-size: 32px; display: block; margin-bottom: 6px; }
+  .mode-btn .label { font-size: 14px; font-weight: bold; }
+  .mode-btn .desc { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+  .form-group input {
+    width: 100%;
+    padding: 10px 14px;
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #eee;
+    font-size: 14px;
+    outline: none;
+  }
+  .form-group input:focus { border-color: #e94560; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+  .btn-primary { background: #e94560; color: #fff; }
+  .btn-primary:hover { background: #c73652; }
+  .btn-primary:disabled { background: #555; cursor: not-allowed; }
+
+  .log {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #0d0d1a;
+    border: 1px solid #222;
+    border-radius: 8px;
+    height: 120px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    color: #aaa;
+    white-space: pre-wrap;
+  }
+  .log .ok { color: #4ade80; }
+  .log .err { color: #f87171; }
+  .log .warn { color: #fbbf24; }
+  .log .info { color: #60a5fa; }
+
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    background: #e94560;
+    width: 0%;
+    transition: width 0.5s;
+    border-radius: 2px;
+  }
+
+  #joinSection, #hostSection { display: none; }
+</style>
+
+<script language="VBScript">
+Dim shell, fso
+
+Sub Window_OnLoad()
+  Set shell = CreateObject("WScript.Shell")
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  window.resizeTo 620, 560
+  window.moveTo (screen.width - 620) / 2, (screen.height - 560) / 2
+End Sub
+
+' ─── Logging ──────────────────────────────────────────────────────
+
+Sub Log(msg, cls)
+  Dim el : Set el = document.getElementById("log")
+  el.innerHTML = el.innerHTML & "<span class='" & cls & "'>" & msg & "</span>" & vbCrLf
+  el.scrollTop = el.scrollHeight
+End Sub
+
+Sub SetProgress(pct)
+  document.getElementById("progressFill").style.width = pct & "%"
+End Sub
+
+' ─── Mode Selection ──────────────────────────────────────────────
+
+Sub SelectMode(mode)
+  document.getElementById("hostBtn").className = "mode-btn"
+  document.getElementById("joinBtn").className = "mode-btn"
+  document.getElementById("hostSection").style.display = "none"
+  document.getElementById("joinSection").style.display = "none"
+
+  If mode = "host" Then
+    document.getElementById("hostBtn").className = "mode-btn active"
+    document.getElementById("hostSection").style.display = "block"
+  Else
+    document.getElementById("joinBtn").className = "mode-btn active"
+    document.getElementById("joinSection").style.display = "block"
+  End If
+End Sub
+
+' ─── Run command and capture output ──────────────────────────────
+
+Function RunCmd(cmd)
+  On Error Resume Next
+  Dim exec, output
+  Set exec = shell.Exec("cmd.exe /c " & cmd & " 2>&1")
+  output = ""
+  Do While Not exec.StdOut.AtEndOfStream
+    output = output & exec.StdOut.ReadLine() & vbCrLf
+  Loop
+  RunCmd = output
+  On Error GoTo 0
+End Function
+
+Function CommandExists(cmd)
+  Dim result
+  result = RunCmd("where " & cmd)
+  CommandExists = (Len(result) > 5 And InStr(result, "Could not find") = 0 And InStr(result, "not recognized") = 0)
+End Function
+
+' ─── Install (Host mode) ─────────────────────────────────────────
+
+Sub StartInstall()
+  Dim installDir, dmName
+  installDir = document.getElementById("installDir").value
+  dmName = document.getElementById("dmName").value
+
+  If Len(dmName) < 1 Then
+    MsgBox "Enter your DM display name!", 48, "Questboard"
+    Exit Sub
+  End If
+
+  document.getElementById("installBtn").disabled = True
+  Log "Starting Questboard setup...", "info"
+  SetProgress 5
+
+  ' Check Python
+  Log "Checking Python...", "info"
+  If CommandExists("python") Then
+    Dim pyVer : pyVer = RunCmd("python --version")
+    Log "  Found: " & Replace(pyVer, vbCrLf, ""), "ok"
+  Else
+    Log "  Python not found — installing via winget...", "warn"
+    RunCmd "winget install Python.Python.3.12 --accept-package-agreements --accept-source-agreements"
+    Log "  Python installed", "ok"
+  End If
+  SetProgress 15
+
+  ' Check Node
+  Log "Checking Node.js...", "info"
+  If CommandExists("node") Then
+    Dim nodeVer : nodeVer = RunCmd("node --version")
+    Log "  Found: " & Replace(nodeVer, vbCrLf, ""), "ok"
+  Else
+    Log "  Node.js not found — installing LTS...", "warn"
+    RunCmd "winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements"
+    Log "  Node.js installed", "ok"
+  End If
+  SetProgress 25
+
+  ' Check Git
+  Log "Checking Git...", "info"
+  If CommandExists("git") Then
+    Log "  Git found", "ok"
+  Else
+    Log "  Git not found — installing...", "warn"
+    RunCmd "winget install Git.Git --accept-package-agreements --accept-source-agreements"
+    Log "  Git installed", "ok"
+  End If
+  SetProgress 30
+
+  ' Clone repo
+  Log "Downloading Questboard...", "info"
+  If fso.FolderExists(installDir & "\.git") Then
+    Log "  Updating existing install...", "info"
+    RunCmd "cd /d " & Chr(34) & installDir & Chr(34) & " && git pull"
+    Log "  Updated", "ok"
+  Else
+    RunCmd "git clone https://github.com/Sangrish-braincade/questboard.git " & Chr(34) & installDir & Chr(34)
+    Log "  Downloaded to " & installDir, "ok"
+  End If
+  SetProgress 50
+
+  ' Python venv
+  Log "Setting up Python backend...", "info"
+  Dim serverDir : serverDir = installDir & "\server"
+  RunCmd "cd /d " & Chr(34) & serverDir & Chr(34) & " && python -m venv .venv"
+  RunCmd "cd /d " & Chr(34) & serverDir & Chr(34) & " && .venv\Scripts\pip.exe install --upgrade pip setuptools wheel -q"
+  RunCmd "cd /d " & Chr(34) & serverDir & Chr(34) & " && .venv\Scripts\pip.exe install -r requirements.txt -q"
+  Log "  Backend ready", "ok"
+  SetProgress 70
+
+  ' Frontend
+  Log "Setting up frontend (this takes a minute)...", "info"
+  RunCmd "cd /d " & Chr(34) & installDir & Chr(34) & " && npm install"
+  Log "  Frontend ready", "ok"
+  SetProgress 90
+
+  ' Create launcher batch file
+  Dim batPath : batPath = installDir & "\Questboard.bat"
+  Dim batFile : Set batFile = fso.CreateTextFile(batPath, True)
+  batFile.WriteLine "@echo off"
+  batFile.WriteLine "title Questboard"
+  batFile.WriteLine "cd /d " & Chr(34) & serverDir & Chr(34)
+  batFile.WriteLine "start /b .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 7777"
+  batFile.WriteLine "timeout /t 3 /nobreak > nul"
+  batFile.WriteLine "cd /d " & Chr(34) & installDir & "\frontend" & Chr(34)
+  batFile.WriteLine "start /b npx vite --host"
+  batFile.WriteLine "timeout /t 4 /nobreak > nul"
+  batFile.WriteLine "start http://localhost:5173"
+  batFile.WriteLine "echo."
+  batFile.WriteLine "echo   Questboard is running!"
+  batFile.WriteLine "echo   DM Dashboard:  http://localhost:5173/dm"
+  batFile.WriteLine "echo   Player Join:   http://localhost:5173/play"
+  batFile.WriteLine "echo."
+  batFile.WriteLine "echo   Press any key to stop..."
+  batFile.WriteLine "pause > nul"
+  batFile.WriteLine "taskkill /f /im python.exe /fi ""WINDOWTITLE eq *questboard*"" 2>nul"
+  batFile.Close
+
+  ' Desktop shortcut
+  Dim shortcutPath : shortcutPath = shell.SpecialFolders("Desktop") & "\Questboard.lnk"
+  Dim shortcut : Set shortcut = shell.CreateShortcut(shortcutPath)
+  shortcut.TargetPath = batPath
+  shortcut.WorkingDirectory = installDir
+  shortcut.Description = "Questboard - D&D Session Manager"
+  shortcut.Save
+
+  SetProgress 100
+  Log "", ""
+  Log "══════════════════════════════════════", "ok"
+  Log "  INSTALLATION COMPLETE!", "ok"
+  Log "  Desktop shortcut created.", "ok"
+  Log "  Double-click 'Questboard' to launch!", "ok"
+  Log "══════════════════════════════════════", "ok"
+
+  document.getElementById("installBtn").value = "INSTALLED — Launch Now"
+  document.getElementById("installBtn").disabled = False
+  document.getElementById("installBtn").onclick = GetRef("LaunchApp")
+End Sub
+
+Sub LaunchApp()
+  Dim installDir : installDir = document.getElementById("installDir").value
+  shell.Run Chr(34) & installDir & "\Questboard.bat" & Chr(34), 1, False
+  window.close
+End Sub
+
+' ─── Join (Player mode) ──────────────────────────────────────────
+
+Sub JoinGame()
+  Dim serverUrl, playerName
+  serverUrl = document.getElementById("serverUrl").value
+  playerName = document.getElementById("playerName").value
+
+  If Len(serverUrl) < 5 Then
+    MsgBox "Enter the DM's server URL or IP!", 48, "Questboard"
+    Exit Sub
+  End If
+  If Len(playerName) < 1 Then
+    MsgBox "Enter your player name!", 48, "Questboard"
+    Exit Sub
+  End If
+
+  ' Players just need a browser — no install needed
+  Dim url : url = serverUrl
+  If Left(url, 4) <> "http" Then
+    url = "http://" & url
+  End If
+  If InStr(url, ":") = InStr(url, "://") Then
+    ' No port specified, add default
+    url = url & ":5173"
+  End If
+
+  Log "Opening Questboard in your browser...", "info"
+  Log "  URL: " & url & "/play", "ok"
+  shell.Run Chr(34) & url & "/play" & Chr(34), 1, False
+End Sub
+
+</script>
+</head>
+<body>
+
+<div class="header">
+  <h1>QUESTBOARD</h1>
+  <p>Local-First D&amp;D 5e Session Manager</p>
+</div>
+
+<div class="content">
+  <div class="mode-select">
+    <div id="hostBtn" class="mode-btn" onclick="SelectMode 'host'">
+      <span class="icon">&#x1F3F0;</span>
+      <span class="label">I'm the DM</span>
+      <span class="desc">Host a session from this PC</span>
+    </div>
+    <div id="joinBtn" class="mode-btn" onclick="SelectMode 'join'">
+      <span class="icon">&#x2694;</span>
+      <span class="label">I'm a Player</span>
+      <span class="desc">Join an existing session</span>
+    </div>
+  </div>
+
+  <!-- Host Section -->
+  <div id="hostSection">
+    <div class="form-group">
+      <label>Install Location</label>
+      <input type="text" id="installDir" value="C:\Questboard" />
+    </div>
+    <div class="form-group">
+      <label>Your DM Name</label>
+      <input type="text" id="dmName" placeholder="e.g. Dungeon Master" />
+    </div>
+    <input type="button" class="btn btn-primary" id="installBtn" value="Install &amp; Launch" onclick="StartInstall" />
+  </div>
+
+  <!-- Join Section -->
+  <div id="joinSection">
+    <div class="form-group">
+      <label>DM's Server URL (ask your DM)</label>
+      <input type="text" id="serverUrl" placeholder="e.g. 192.168.1.50:5173 or abc123.trycloudflare.com" />
+    </div>
+    <div class="form-group">
+      <label>Your Character Name</label>
+      <input type="text" id="playerName" placeholder="e.g. Thorin Ironfist" />
+    </div>
+    <input type="button" class="btn btn-primary" value="Join Game" onclick="JoinGame" />
+  </div>
+
+  <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
+  <div class="log" id="log"></div>
+</div>
+
+</body>
+</html>

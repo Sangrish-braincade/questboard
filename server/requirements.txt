@@ -24,17 +24,3 @@ pillow==11.1.0
 
 # File watching
 watchdog==6.0.0
-
-# Discord bot
-discord.py[voice]==2.4.0
-
-# Voice transcription
-google-cloud-speech==2.29.0
-pydub==0.25.1
-
-# Testing
-pytest==8.3.4
-pytest-asyncio==0.25.0
-
-# Linting
-ruff==0.8.6

@@ -12,8 +12,12 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:server": "cd server && uvicorn app.main:app --reload --host 0.0.0.0 --port 7777",
     "dev:electron": "npm run dev --workspace=electron",
-    "build": "npm run build --workspace=frontend",
-    "build:electron": "npm run build --workspace=electron",
+    "build": "npm run build --workspace=frontend && npm run build:electron",
+    "build:electron": "tsc --project electron/tsconfig.json",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux",
     "lint": "concurrently \"npm run lint:frontend\" \"npm run lint:server\"",
     "lint:frontend": "npm run lint --workspace=frontend",
     "lint:server": "cd server && ruff check .",
@@ -25,7 +29,10 @@
     "test:server": "cd server && pytest"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.0",
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -34,5 +41,84 @@
     "type": "git",
     "url": "https://github.com/Sangrish-braincade/questboard.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "build": {
+    "appId": "com.questboard.app",
+    "productName": "Questboard",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "server",
+        "to": "server",
+        "filter": [
+          "!node_modules",
+          "!.git"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150,
+          "type": "file"
+        },
+        {
+          "x": 240,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "${productName}-${version}.${ext}"
+    }
+  }
 }

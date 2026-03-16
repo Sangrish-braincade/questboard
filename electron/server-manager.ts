@@ -74,6 +74,27 @@ class ServerManager {
   }
 
   /**
+   * Check if a frozen (PyInstaller) server exe exists.
+   */
+  private findFrozenServer(): string | null {
+    const fs = require("fs");
+    const isWin = process.platform === "win32";
+    const exeName = isWin ? "questboard-server.exe" : "questboard-server";
+
+    // In packaged app: check extraResources
+    if (app.isPackaged) {
+      const frozenPath = path.join(process.resourcesPath, "questboard-server", exeName);
+      if (fs.existsSync(frozenPath)) return frozenPath;
+    }
+
+    // Dev mode: check server/dist/
+    const devFrozen = path.join(this.getServerDir(), "dist", "questboard-server", exeName);
+    if (fs.existsSync(devFrozen)) return devFrozen;
+
+    return null;
+  }
+
+  /**
    * Get the server directory path.
    * In dev: <project-root>/server
    * In prod: <resources>/server (bundled with electron-builder extraResources)
@@ -88,6 +109,7 @@ class ServerManager {
 
   /**
    * Start the FastAPI server as a child process.
+   * Uses frozen exe if available, falls back to Python + uvicorn.
    */
   async start(opts?: {
     port?: number;
@@ -102,43 +124,51 @@ class ServerManager {
     this._port = opts?.port ?? SERVER_PORT;
     this.onStatusChange = opts?.onStatus ?? null;
 
-    const pythonExe = this.findPython();
     const serverDir = this.getServerDir();
+    const frozenExe = this.findFrozenServer();
 
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
       QUESTBOARD_PORT: String(this._port),
+      QUESTBOARD_HOST: "127.0.0.1",
     };
 
     if (opts?.campaignRoot) {
       env.QUESTBOARD_CAMPAIGN_ROOT = opts.campaignRoot;
     }
 
-    console.log(`[ServerManager] Starting server: ${pythonExe} -m uvicorn`);
-    console.log(`[ServerManager] Server dir: ${serverDir}`);
+    let spawnCmd: string;
+    let spawnArgs: string[];
+    let spawnCwd: string;
+
+    if (frozenExe) {
+      // Use frozen PyInstaller exe — no Python needed!
+      spawnCmd = frozenExe;
+      spawnArgs = [];
+      spawnCwd = path.dirname(frozenExe);
+      console.log(`[ServerManager] Using frozen server: ${frozenExe}`);
+    } else {
+      // Fallback: use Python + uvicorn
+      spawnCmd = this.findPython();
+      spawnArgs = [
+        "-m", "uvicorn", "app.main:app",
+        "--host", "127.0.0.1",
+        "--port", String(this._port),
+        "--log-level", "info",
+      ];
+      spawnCwd = serverDir;
+      console.log(`[ServerManager] Using Python: ${spawnCmd}`);
+    }
+
+    console.log(`[ServerManager] Server dir: ${spawnCwd}`);
     console.log(`[ServerManager] Port: ${this._port}`);
 
-    this.process = spawn(
-      pythonExe,
-      [
-        "-m",
-        "uvicorn",
-        "app.main:app",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        String(this._port),
-        "--log-level",
-        "info",
-      ],
-      {
-        cwd: serverDir,
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-        // On Windows, don't open a console window
-        windowsHide: true,
-      }
-    );
+    this.process = spawn(spawnCmd, spawnArgs, {
+      cwd: spawnCwd,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
 
     // Pipe stdout/stderr to main process console
     this.process.stdout?.on("data", (data: Buffer) => {
