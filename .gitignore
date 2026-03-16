@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+frontend/dist/
+electron/dist/
+*.egg-info/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Campaign data (user data, don't commit)
+# Uncomment if you want to exclude campaign data from git:
+# campaigns/
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+*.log
+
+# PyInstaller
+*.spec
+
+# Electron builder
+release/
+
+# Scripts (setup utilities, not part of the app)
+setup-questboard.ps1
+create-issues.ps1
+fix-milestones.ps1

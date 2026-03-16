@@ -1,0 +1,38 @@
+{
+  "name": "questboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first D&D session manager. DM hosts, players join via browser.",
+  "workspaces": [
+    "frontend",
+    "electron"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:server": "cd server && uvicorn app.main:app --reload --host 0.0.0.0 --port 7777",
+    "dev:electron": "npm run dev --workspace=electron",
+    "build": "npm run build --workspace=frontend",
+    "build:electron": "npm run build --workspace=electron",
+    "lint": "concurrently \"npm run lint:frontend\" \"npm run lint:server\"",
+    "lint:frontend": "npm run lint --workspace=frontend",
+    "lint:server": "cd server && ruff check .",
+    "format": "concurrently \"npm run format:frontend\" \"npm run format:server\"",
+    "format:frontend": "npm run format --workspace=frontend",
+    "format:server": "cd server && ruff format .",
+    "test": "concurrently \"npm run test:frontend\" \"npm run test:server\"",
+    "test:frontend": "npm run test --workspace=frontend",
+    "test:server": "cd server && pytest"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sangrish-braincade/questboard.git"
+  },
+  "license": "MIT"
+}
