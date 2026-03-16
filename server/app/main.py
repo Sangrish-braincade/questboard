@@ -3,12 +3,16 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import os
 
 from app.core.config import settings
 from app.core.database import init_db
 from app.api.routes import auth, campaigns, characters, maps, combat, dice, npcs, inventory, audio
+from app.websocket.manager import ws_manager
+from app.websocket.handlers import handle_message
+from app.services.campaign_manager import campaign_manager
 
 
 @asynccontextmanager
@@ -17,8 +21,10 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"🎲 Questboard server starting on port {settings.port}")
     print(f"📁 Campaign root: {settings.campaign_root}")
+    campaign_manager.ensure_root_exists()
     yield
     # Shutdown
+    campaign_manager.stop_all_watchers()
     print("🛑 Questboard server shutting down")
 
 
@@ -56,4 +62,18 @@ app.include_router(npcs.router, prefix="/api/npcs", tags=["npcs"])
 app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
 app.include_router(audio.router, prefix="/api/audio", tags=["audio"])
 
-# WebSocket endpoint will be added in Issue #7
+# --- WebSocket endpoint ---
+
+@app.websocket("/ws/{session_code}")
+async def websocket_endpoint(websocket: WebSocket, session_code: str):
+    """Main WebSocket endpoint — one connection per player/DM per session."""
+    name = await ws_manager.connect(websocket, session_code)
+    if name is None:
+        return  # Auth failed, connection already closed
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            await handle_message(raw, session_code, name)
+    except WebSocketDisconnect:
+        await ws_manager.disconnect(session_code, name)
